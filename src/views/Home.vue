@@ -45,6 +45,9 @@ export default defineComponent({
     };
 
     const onCreateOrUpdateHobby = async () => {
+      if (!hobby.name) {
+        return;
+      }
       if (!isEdit.value) {
         await useGraphqlMutation(createHobby, { name: hobby.name });
       } else {
@@ -56,6 +59,9 @@ export default defineComponent({
     };
 
     const onDeleteHobby = async (id: string) => {
+      isEdit.value = false;
+      hobby._id = '';
+      hobby.name = '';
       await useGraphqlMutation(deleteHobby, { id });
       onGetHobbies();
     };
