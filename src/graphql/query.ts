@@ -9,3 +9,21 @@ export const getHobby = gql`
      }
    }
 `;
+
+export const getHobbies = gql`
+    query getHobbies($filters: ListHobbyInput) {
+      hobbies(filters: $filters) {
+        _id
+        name
+      }
+    }
+`;
+
+export const getHobbiesWhereFilter = gql`
+    query getHobbiesWhereFilter($filters: String) {
+      hobbies(filters: $filters) {
+        _id
+        name
+      }
+    }
+`;

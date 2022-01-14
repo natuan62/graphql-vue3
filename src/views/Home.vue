@@ -1,52 +1,102 @@
 <template>
-  <p>person</p>
-  <button @click="onGetHobbyById()">get hobby</button>
-  <p>{{ hobbyInfo }}</p>
-  <br />
-  <p>create</p>
-  <input type="text" v-model="nameHobby" />
-  <br />
-  <button @click="onCreateHobby()">create</button>
-  <br />
-  {{ createdHobby }}
+  <p>Hobby table</p>
+  <input type="text" v-model="hobby.name" placeholder="hobby name" @keyup.enter="onCreateOrUpdateHobby()" />
+  <button @click="onCreateOrUpdateHobby()">{{ isEdit ? 'Update' : 'Create' }} hobby</button>
+  <table>
+    <tr>
+      <th>_id</th>
+      <th>Name</th>
+      <th>Action</th>
+    </tr>
+    <tr v-for="(item, index) in items" :key="index">
+      <td>{{ item._id }}</td>
+      <td>{{ item.name }}</td>
+      <td>
+        <button @click="onDeleteHobby(item._id)">Delete</button>
+        <button @click="onEditHobby(item._id)">Edit</button>
+      </td>
+    </tr>
+  </table>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onBeforeMount, reactive, ref } from 'vue';
 import { useGraphqlQuery, useGraphqlMutation } from '../composables/useGraphql';
-import { getHobby } from '../graphql/query';
-import { createHobby } from '../graphql/mutation';
+import { getHobby, getHobbies } from '../graphql/query';
+import { createHobby, deleteHobby, updateHobby } from '../graphql/mutation';
+
+interface Hobby {
+  _id: string;
+  name: string;
+}
 
 export default defineComponent({
   name: 'Home',
   components: {},
   props: {},
   setup() {
-    const nameHobby = ref<string>();
-    const hobbyInfo = ref();
-    const createdHobby = ref();
+    const items = ref<Hobby[]>([]);
+    const hobby = reactive<Hobby>({ _id: '', name: '' });
+    const isEdit = ref<boolean>(false);
 
-    const onGetHobbyById = async () => {
-      const result = (await useGraphqlQuery(getHobby, { id: '61de559a1a0a0087f057039d' })) as { hobby: unknown };
-      console.log('>>> result', result);
-      hobbyInfo.value = result.hobby;
+    const onGetHobbies = async () => {
+      const result = (await useGraphqlQuery(getHobbies, { filters: {} })) as { hobbies: Hobby[] };
+      items.value = result.hobbies;
     };
 
-    const onCreateHobby = async () => {
-      console.log('nameHobby.value', nameHobby.value);
-      const result = (await useGraphqlMutation(createHobby, { name: nameHobby.value })) as { createHobby: unknown };
-      console.log('>>> result', result);
-      createdHobby.value = result.createHobby;
+    const onCreateOrUpdateHobby = async () => {
+      if (!isEdit.value) {
+        await useGraphqlMutation(createHobby, { name: hobby.name });
+      } else {
+        const payload = { id: hobby._id, name: hobby.name }
+        await useGraphqlMutation(updateHobby, payload);
+      }
+      hobby.name = '';
+      onGetHobbies();
     };
+
+    const onDeleteHobby = async (id: string) => {
+      await useGraphqlMutation(deleteHobby, { id });
+      onGetHobbies();
+    };
+
+    const onEditHobby = async (id: string) => {
+      isEdit.value = true;
+      const result = (await useGraphqlQuery(getHobby, { id })) as { hobby: Hobby };
+      hobby._id = result.hobby._id;
+      hobby.name = result.hobby.name;
+    };
+
+    onBeforeMount(() => {
+      onGetHobbies();
+    });
 
     return {
-      nameHobby,
-      hobbyInfo,
-      createdHobby,
+      items,
+      hobby,
+      isEdit,
 
-      onGetHobbyById,
-      onCreateHobby,
+      onEditHobby,
+      onDeleteHobby,
+      onCreateOrUpdateHobby,
     };
   },
 });
 </script>
+
+<style scoped>
+td,
+th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+button {
+  margin-right: 5px;
+  margin-left: 5px;
+}
+</style>
